@@ -30,7 +30,7 @@ Object.assign(AttachmentsApi.prototype, {
         path: '/attachments',
         func: function create(url, access, source) {
             const data = new FormData();
-            data.append('source', source);
+            data.append('source', source, source.name);
 
             url += `?access=${access}`;
 
