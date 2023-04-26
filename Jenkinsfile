@@ -92,7 +92,7 @@ pipeline {
       }
       steps {
         script {
-          npmPipelineUtils.publishTest(nextTag, params.CLOSE)
+          npmPipelineUtils.publish(nextTag, params.CLOSE)
           if (params.CLOSE) rundeckPipelineUtils.cleanGithubTags('smooch-core-js')
         }
       }
