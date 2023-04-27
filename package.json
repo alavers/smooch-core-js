@@ -1,5 +1,5 @@
 {
-  "name": "smooch-core",
+  "name": "@reviewpro/smooch-core",
   "version": "5.3.3",
   "description": "Javascript wrapper for Smooch API",
   "homepage": "https://smooch.io",
