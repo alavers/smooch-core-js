@@ -1,17 +1,24 @@
 import { BaseApi } from './base';
-import { http } from '../utils/http';
+import smoochMethod from '../utils/smoochMethod';
 
 /**
- * @class StripeApi
+ * @constructor
+ * @name StripeApi
  * @extends BaseApi
  */
 export class StripeApi extends BaseApi {
-
-  getAccount() {
-    const url = this.getFullURL('stripe', 'account');
-    return this.validateAuthHeaders().then((headers) => {
-      return http('GET', url, {}, headers);
-    });
-  }
-
 }
+
+Object.assign(StripeApi.prototype, {
+    /**
+     * Fetch the stripe account associated with an app
+     * @memberof StripeApi.prototype
+     * @method getAccount
+     * @return {APIResponse}
+     */
+    getAccount: smoochMethod({
+        params: [],
+        path: '/stripe/account',
+        method: 'GET'
+    })
+});

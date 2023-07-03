@@ -1,7 +1,4 @@
-if (typeof process !== 'undefined') {
-  // on node, fetch already exists
-  require('isomorphic-fetch');
-}
+const fetch = require('isomorphic-fetch');
 
 /**
  * API Response promise - resolves with the requested resource
@@ -17,70 +14,81 @@ if (typeof process !== 'undefined') {
  * @return {string}      - the final url
  */
 export function stringifyGETParams(url, data) {
-  let query = '';
+    const query = Object.keys(data).reduce((q, key) => {
+        if (data[key] !== null) {
+            return q + '&' + encodeURIComponent(key) + '=' + encodeURIComponent(data[key]);
+        }
+        return q;
+    }, '');
 
-  for (var key in Object.keys(data)) {
-    if (data[key] !== null) {
-      query += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(data[key]);
+    if (query) {
+        url += (~url.indexOf('?') ? '&' : '?') + query.substring(1);
     }
-  }
-  if (query) {
-    url += (~url.indexOf('?') ? '&' : '?') + query.substring(1);
-  }
-  return url;
+    return url;
 }
 
-export function handleStatus(response) {
-  if (response.status >= 200 && response.status < 300) {
-    return response;
-  }
-
-  var error = new Error(response.statusText);
-  error.response = response;
-
-  throw error;
-}
-
-
-export function handleBody(response) {
-  if (response.status === 202 || response.status === 204) {
-    return Promise.resolve();
-  }
-
-  var contentType = response.headers.get('Content-Type') || '';
-  var isJson = contentType.indexOf('application/json') > -1;
-
-  return isJson ? response.json() : Promise.resolve();
-}
-
-export function http(method, url, data, headers = {}) {
-  method = method.toUpperCase();
-
-  let fetchOptions = {
-    method: method,
-    headers: Object.assign({
-      'Accept': 'application/json',
-      'Content-Type': 'application/json'
-    }, headers)
-  };
-
-  if (data) {
-    data = Object.assign({}, data);
-
-    if (method === 'GET') {
-      url = stringifyGETParams(url, data);
-    } else if (method === 'POST' || method === 'PUT') {
-      fetchOptions.body = JSON.stringify(data);
+export function handleResponse(response) {
+    if (response.status === 202 || response.status === 204) {
+        return Promise.resolve();
     }
-  }
 
-  return fetch(url, fetchOptions)
-    .then(handleStatus)
-    .then(handleBody);
+    const contentType = response.headers.get('Content-Type') || '';
+    const isJson = contentType.indexOf('application/json') > -1;
+
+    if (response.status >= 200 && response.status < 300) {
+        return isJson ? response.json() : Promise.resolve();
+    } else {
+        if (isJson) {
+            return response.json().then(function(json) {
+                const {error={}} = json;
+
+                const err = new Error(error.description || response.statusText);
+                err.response = response;
+                err.code = error.code;
+                err.description = error.description;
+
+                throw err;
+            });
+        } else {
+            const error = new Error(response.statusText);
+            error.response = response;
+
+            return Promise.reject(error);
+        }
+    }
 }
 
-export function urljoin(...args) {
-  return args.map((part) => {
-    return part.replace(/\/$/, '');
-  }).join('/');
+export function http(method, url, data, headers = {}, agent) {
+    method = method.toUpperCase();
+
+    const fetchOptions = {
+        method: method,
+        headers: Object.assign({
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }, headers)
+    };
+
+    if (agent) {
+        fetchOptions.agent = agent;
+    }
+
+    if (data) {
+        if (data instanceof FormData) {
+            fetchOptions.body = data;
+            // Remove the Content-Type header, `fetch` will
+            // generate one to add the form boundary.
+            delete fetchOptions.headers['Content-Type'];
+        } else {
+            data = Object.assign({}, data);
+            if (method === 'GET') {
+                url = stringifyGETParams(url, data);
+            } else if (method === 'POST' || method === 'PUT') {
+                fetchOptions.body = JSON.stringify(data);
+            }
+        }
+    }
+
+    return fetch(url, fetchOptions)
+        .then(handleResponse);
 }

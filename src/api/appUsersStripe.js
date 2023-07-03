@@ -1,45 +1,68 @@
 import { BaseApi } from './base';
-import { http } from '../utils/http';
-
+import smoochMethod from '../utils/smoochMethod';
 
 /**
- * @class AppUsersStripeApi
+ * @constructor
+ * @name AppUsersStripeApi
  * @extends BaseApi
  */
 export class AppUsersStripeApi extends BaseApi {
-
-  updateCustomer(userId, token) {
-    if (!token) {
-      return Promise.reject(new Error('Must provide a Stripe token.'))
-    }
-
-    const url = this.getFullURL('appUsers', userId, 'stripe', 'customer');
-    return this.validateAuthHeaders(['jwt']).then((headers) => {
-      return http('POST', url, {
-        token
-      }, headers);
-    });
-  }
-
-  createTransaction(userId, actionId, token) {
-    if (!actionId) {
-      return Promise.reject(new Error('Must provide an action id.'));
-    }
-
-    const url = this.getFullURL('appUsers', userId, 'stripe', 'transaction');
-
-    let body = {
-      actionId
-    };
-
-    if (token) {
-      Object.assign(body, {
-        token
-      });
-    }
-
-    return this.validateAuthHeaders().then((headers) => {
-      return http('POST', url, body, headers);
-    });
-  }
 }
+
+Object.assign(AppUsersStripeApi.prototype, {
+    /**
+     * Assign a stripe payment method to an existing user
+     * @memberof AppUsersStripeApi.prototype
+     * @method updateCustomer
+     * @param  {string} userId
+     * @param  {string} token
+     * @return {APIResponse}
+     */
+    updateCustomer: smoochMethod({
+        params: ['userId', 'token'],
+        path: '/appusers/:userId/stripe/customer',
+        func: function updateCustomer(url, userId, token) {
+            if (!token) {
+                return Promise.reject(new Error('Must provide a Stripe token.'));
+            }
+
+            return this.request('POST', url, {
+                token
+            }, {
+                allowedAuth: ['jwt']
+            });
+        }
+    }),
+
+    /**
+     * Create a one-time stripe transaction
+     * @memberof AppUsersStripeApi.prototype
+     * @method createTransaction
+     * @param  {string} userId
+     * @param  {string} actionId
+     * @param  {string} token
+     * @return {APIResponse}
+     */
+    createTransaction: smoochMethod({
+        params: ['userId', 'actionId', 'token'],
+        optional: ['token'],
+        path: '/appusers/:userId/stripe/transaction',
+        func: function createTransaction(url, userId, actionId, token) {
+            if (!actionId) {
+                return Promise.reject(new Error('Must provide an action id.'));
+            }
+
+            const body = {
+                actionId
+            };
+
+            if (token) {
+                Object.assign(body, {
+                    token
+                });
+            }
+
+            return this.request('POST', url, body);
+        }
+    })
+});
